@@ -3,7 +3,6 @@ from .models import *
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-# from question import Question, Option
 
 # Create your views here.
 @login_required(login_url = 'dash:login')
@@ -77,20 +76,72 @@ def quest_detail(request, id):
         option_correct.name = request.POST['correct']
         option_correct.save()
 
-        num_options = range(4)
-        
         data = [request.POST['incorrect1'], request.POST['incorrect2'], request.POST['incorrect3']]
 
-       
-        for i, option in enumerate(options):
-            option.name = data[i]
-            option.save()
+        for i, opt in enumerate(options):
+            opt.name = data[i]
+            opt.save()
     return render( request, 'details/detail.html', context)
 
 @login_required(login_url = 'dash:login')
 def quiz_delete(request, id):
     Quiz.objects.get(id = id).delete()
     return redirect('dash:main')
+
+@login_required(login_url = 'dash:login')
+def get_results(request, id):
+    quiz = Quiz.objects.get(id=id)
+    taker = QuizTaker.objects.filter(quiz=quiz)
+
+    # results = []
+    # for i in taker:
+    #     results.append(Result.objects.get(taker=i))
+    
+    results = tuple(
+            map(
+            lambda x : Result.objects.get(taker=x),
+            taker
+        )
+    )
+    return render(request, 'quiz/results.html', {'results':results})
+
+def result_detail(request, id):
+    result = Result.objects.get(id=id)
+    answers = Answer.objects.filter(taker=result.taker)
+    context = {
+        'taker':result.taker,
+        'answers':answers
+    }
+    return render(request, 'quiz/result-detail.html', context)
+
+
+#export to excel
+
+import openpyxl
+from django.http import HttpResponse
+
+def export_results_to_excel(request, id):
+    quiz = Quiz.objects.get(id=id)
+    takers = QuizTaker.objects.filter(quiz=quiz)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(['FISh', 'Phone', 'Email', 'Total Questions', 'Correct Answers', 'Incorrect Answers', 'Percentage'])
+
+    for taker in takers:
+        result = Result.objects.get(taker=taker)
+        answers = Answer.objects.filter(taker=result.taker)
+        total_questions = quiz.questions.count()
+        correct_answers = answers.filter(correct=True).count()
+        incorrect_answers = total_questions - correct_answers
+        percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+
+        ws.append([taker.full_name, taker.phone, taker.email, total_questions, correct_answers, incorrect_answers, percentage])
+
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="quiz_results.xlsx"'
+    wb.save(response)
+    return render(request,response)
 
 #login
 
@@ -124,3 +175,4 @@ def register(request):
         else:
             status  = f'the username {username} is occupied'
     return render(request, 'auth/register.html', {'status': status})
+
