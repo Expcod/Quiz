@@ -54,9 +54,9 @@ class Option(models.Model):
         if not self.pk:
             option = Option.objects.filter(question=self.question, is_correct=True)
             if option and self.is_correct:
-                raise ValueError('Ikkita to`g`ri javob kiritish mumkin emas')
+                raise ValueError('Cannot enter 2 correct answers')
             elif not option and not self.is_correct :
-                raise ValueError('Birinchi to`g`ri javob kiriting ')
+                raise ValueError('Firstly, please enter correct answer ')
         super(Option, self).save(*args, **kwargs)
     
     def __str__(self) -> str:

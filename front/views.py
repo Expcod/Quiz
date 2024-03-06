@@ -29,7 +29,7 @@ def quiz_detail(request, code):
         return HttpResponse('Inactive')
     elif quiz.limited_date and (timezone.now() < quiz.start_date or quiz.limited_date < timezone.now()):
         quiz.is_active = False
-        return HttpResponse('unavailable quiz')     
+        return HttpResponse('Time limit! unavailable quiz')     
     else:
         questions = models.Question.objects.filter(
             quiz = quiz
@@ -66,7 +66,7 @@ def create_answers(request, code):
     else:
         quiz.is_active = False 
         quiz.save()
-        return HttpResponse('Time had been already over, your answers were will not be written to the database')
+        return HttpResponse('Sorry time over!!!')
 
 def success(request, id):
     taker = models.QuizTaker.objects.get(id = id)

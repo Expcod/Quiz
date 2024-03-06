@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from io import BytesIO
 
-# Create your views here.
+
 @login_required(login_url = 'dash:login')
 def main(request):
     quizes = Quiz.objects.filter(author = request.user)
@@ -176,7 +176,7 @@ def excel_report(request, id):
     results = Result.objects.filter(taker__quiz = Quiz.objects.get(id = id)).order_by('-correct_answers')
     wb = Workbook()
     wsh = wb.active
-    headers = ['#', 'Full name', "Phone", "Email", "Total Questions", "Correct answers", "Incorrect answers", "Percentage"]
+    headers = ['#', 'name', "Phone", "Email", "Total Questions", "Correct answers", "Incorrect answers", "Percentage"]
     wsh.append(headers)
     for i , result in enumerate(results):
         if not result.taker.email:
