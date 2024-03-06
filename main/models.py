@@ -8,6 +8,9 @@ class Quiz(models.Model):
     title = models.CharField(max_length=255)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=255, blank=True, unique=True)
+    start_date = models.DateTimeField(null = True)
+    limited_date = models.DateTimeField(null = True)
+    is_active = models.BooleanField(default = True)
 
     @property
     def all_questions(self):
@@ -74,7 +77,10 @@ class Answer(models.Model):
     is_correct = models.BooleanField()
 
     def save(self, *args, **kwargs):
-        self.is_correct = self.answer == self.question.correct_answer
+        if self.answer == self.question.correct_answer:
+            self.is_correct = True
+        else:
+            self.is_correct = False
         super(Answer, self).save(*args, **kwargs)
 
 
@@ -91,4 +97,5 @@ class Result(models.Model):
     
     @property
     def percentage(self, *args, **kwargs):
-        return self.correct_answers / self.questions * 100
+        data = self.correct_answers / self.questions * 100
+        return round(data, 1)

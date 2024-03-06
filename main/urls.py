@@ -17,6 +17,10 @@ urlpatterns = [
     #auth
     path('login', views.logging_in, name = 'login'),
     path('register', views.register, name = 'register'),
+
     #excel
-    path('export-results/<int:id>/', views.export_results_to_excel, name='export_results_to_excel'),
+    path('excel/<int:id>', views.excel_report, name = 'to_excel' ),
+    #
+    path('active-deactive/<int:id>', views.activate_deactivate, name = 'act_deact')
+
 ]

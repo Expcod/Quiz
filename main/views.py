@@ -3,32 +3,52 @@ from .models import *
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from openpyxl import Workbook
+from django.http import HttpResponse
+from datetime import datetime, timedelta
+from django.utils import timezone
+from io import BytesIO
 
 # Create your views here.
 @login_required(login_url = 'dash:login')
 def main(request):
     quizes = Quiz.objects.filter(author = request.user)
     context = {
-        "quizes" : quizes
+        "quizes" : quizes,
+        'main': request.build_absolute_uri()
     }
     return render(request, 'main.html', context)
+
 
 @login_required(login_url = 'dash:login')
 def create_quiz(request):
     if request.method == 'POST':
         title = request.POST['title']
-        quiz = Quiz.objects.create(
-            title = title,
-            author = request.user
-        )
+        limit = request.POST['limit']
+        start = request.POST['start']
+        if not start:
+            start = timezone.now()
+        if limit:
+            quiz = Quiz.objects.create(
+                title = title,
+                author = request.user,
+                limited_date = limit,
+                start_date = start
+            )
+        else:
+            quiz = Quiz.objects.create(
+                title = title,
+                author = request.user,
+                start_date = start
+            )
         return redirect('dash:quest_create', quiz.id)
     return render(request, 'quiz/create-quiz.html')
+
 
 @login_required(login_url = 'dash:login')
 def create_question(request, id):
     quiz = Quiz.objects.get(id = id)
     if request.method == 'POST':
-        
         title = request.POST['title']
         ques = Question.objects.create(
             quiz = quiz,
@@ -39,17 +59,17 @@ def create_question(request, id):
             name = request.POST['correct'],
             is_correct = True
         )
-        data = [request.POST['incorrect1'], request.POST['incorrect2'], request.POST['incorrect3']]
-
-        for i in data:
+        for i in range(int(request.POST['input-count'])):
+            string = 'incorrect' + str(i)
             Option.objects.create(
                 question = ques,
-                name = i,
+                name = request.POST[string]
             )
         if request.POST['submit_action'] == 'exit':
             return redirect('dash:main')
+            
+    return render (request, 'quiz/create-question.html')
 
-    return render (request, 'quiz/create-question.html' )
 
 @login_required(login_url = 'dash:login')
 def questions_list(request, id):
@@ -88,6 +108,7 @@ def quiz_delete(request, id):
     Quiz.objects.get(id = id).delete()
     return redirect('dash:main')
 
+
 @login_required(login_url = 'dash:login')
 def get_results(request, id):
     quiz = Quiz.objects.get(id=id)
@@ -103,7 +124,7 @@ def get_results(request, id):
             taker
         )
     )
-    return render(request, 'quiz/results.html', {'results':results})
+    return render(request, 'quiz/results.html', {'results':results, 'quiz':quiz})
 
 def result_detail(request, id):
     result = Result.objects.get(id=id)
@@ -113,35 +134,6 @@ def result_detail(request, id):
         'answers':answers
     }
     return render(request, 'quiz/result-detail.html', context)
-
-
-#export to excel
-
-import openpyxl
-from django.http import HttpResponse
-
-def export_results_to_excel(request, id):
-    quiz = Quiz.objects.get(id=id)
-    takers = QuizTaker.objects.filter(quiz=quiz)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.append(['FISh', 'Phone', 'Email', 'Total Questions', 'Correct Answers', 'Incorrect Answers', 'Percentage'])
-
-    for taker in takers:
-        result = Result.objects.get(taker=taker)
-        answers = Answer.objects.filter(taker=result.taker)
-        total_questions = quiz.questions.count()
-        correct_answers = answers.filter(correct=True).count()
-        incorrect_answers = total_questions - correct_answers
-        percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
-
-        ws.append([taker.full_name, taker.phone, taker.email, total_questions, correct_answers, incorrect_answers, percentage])
-
-    response = HttpResponse(content_type='application/ms-excel')
-    response['Content-Disposition'] = 'attachment; filename="quiz_results.xlsx"'
-    wb.save(response)
-    return render(request,response)
 
 #login
 
@@ -176,3 +168,53 @@ def register(request):
             status  = f'the username {username} is occupied'
     return render(request, 'auth/register.html', {'status': status})
 
+def success_page(request):
+    return render(request, 'quiz/success.html' )
+
+
+def excel_report(request, id):
+    results = Result.objects.filter(taker__quiz = Quiz.objects.get(id = id)).order_by('-correct_answers')
+    wb = Workbook()
+    wsh = wb.active
+    headers = ['#', 'Full name', "Phone", "Email", "Total Questions", "Correct answers", "Incorrect answers", "Percentage"]
+    wsh.append(headers)
+    for i , result in enumerate(results):
+        if not result.taker.email:
+            email = 'No'
+        else:
+            email = result.taker.email
+        row_data = [i+1, result.taker.full_name, result.taker.phone, email, result.questions, result.correct_answers, result.incorrect_answers, f"{result.percentage}%"]
+        wsh.append(row_data)
+
+    for col in wsh.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        changed_width = (max_length + 2) * 1.2
+        wsh.column_dimensions[column].width = changed_width
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="incomes.xlsx"'
+    return response
+
+def activate_deactivate(request, id):
+    previous = request.META['HTTP_REFERER']
+    quiz = Quiz.objects.get(id = id)
+    if quiz.is_active == True:
+        quiz.is_active = False
+        quiz.save()
+    else:
+        quiz.is_active = True
+        quiz.save()
+    return redirect(previous)
