@@ -1,48 +1,41 @@
-{%extends 'base.html'%}
-  {%block content%}
-  {%load static%}
-  <div style="margin-top: 100px;"></div>
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-3 col-xl-3"></div>
-            <div class="card col-xl-6 col-lg-6 " id="sample-login">
-                <form method="post"> {%csrf_token%}
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+
+<div style="margin-top: 100px;"></div>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-3 col-xl-3"></div>
+        <div class="card col-xl-6 col-lg-6" id="sample-login">
+            <form method="post">
+                {% csrf_token %}
                 <div class="card-header">
                     <h4>QUIZ</h4>
                 </div>
+
                 <div class="card-body pb-0">
                     <p class="text-muted">Give a name for this quiz</p>
                     <div class="form-group">
-                    <label>Name</label>
-                    <div class="input-group">
-                        <div class="input-group-prepend">
-                        <div class="input-group-text">
-                            <i class="fa-solid fa-question"></i>
-                        </div>
-                        </div>
-                        <input type="text" class="form-control" placeholder="Quiz name" name="title" required>
-                    </div>
-                    </div>
-                    <h6>give a time-period (if you don't, default values will be given) </h6>
-                    <div class="form-group">
-                        <label>available from:</label>
-                        <input type="datetime-local" class="form-control" name="start">
-                      </div>
-                    <div class="form-group mb-0">
+                        <label for="quiz_name">Name</label>
+                        <input type="text" class="form-control" id="quiz_name" name="quiz_name" required>
                     </div>
                     <div class="form-group">
-                        <label>available to:</label>
-                        <input type="datetime-local" class="form-control" name="limit">
-                      </div>
-                    <div class="form-group mb-0">
+                        <label for="start_datetime">Available from:</label>
+                        <input type="datetime-local" class="form-control" id="start_datetime" name="start_datetime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_datetime">Available to:</label>
+                        <input type="datetime-local" class="form-control" id="end_datetime" name="end_datetime" required>
                     </div>
                 </div>
-                <div class="card-footer  justify-content-center d-flex">
+
+                <div class="card-footer justify-content-center d-flex">
                     <button type="submit" class="btn btn-primary">Next</button>
                 </div>
-                </form>
-            </div>
+            </form>
         </div>
     </div>
-    <script src="{%static 'assets/bundles/bootstrap-timepicker/js/bootstrap-timepicker.min.js'%}"></script>
-  {%endblock%}
+</div>
+
+<script src="{% static 'assets/bundles/bootstrap-timepicker/js/bootstrap-timepicker.min.js' %}"></script>
+{% endblock %}
